@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.vscode/
+coverage/
+*.log
+
+# Exclude AI agent and local config files
+.agent/
+docs/
+.gemini/
+.DS_Store

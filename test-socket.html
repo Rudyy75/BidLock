@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Live Auction Leaderboard (Socket.io)</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #0d1117; color: #c9d1d9; }
+    .card { background: #161b22; padding: 20px; border-radius: 8px; border: 1px solid #30363d; margin-bottom: 20px; }
+    .flash { animation: flash-green 0.5s; }
+    @keyframes flash-green { 0% { background-color: #2ea043; } 100% { background-color: transparent; } }
+    .bid { margin: 5px 0; padding: 5px; border-bottom: 1px solid #30363d; }
+  </style>
+</head>
+<body>
+  <h1>Live Auction Feed</h1>
+  
+  <div class="card" id="inputContainer">
+    <label>Enter Auction ID to Watch:</label>
+    <input type="text" id="auctionId" value="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" style="width: 300px; padding:5px;">
+    <button onclick="joinAuction()">Join Stream</button>
+  </div>
+
+  <div class="card" id="auctionData" style="display:none;">
+    <h2 id="auctionTitle">Waiting for data...</h2>
+    <h3 style="color:#2ea043">Current Max: $<span id="maxBid">0</span></h3>
+    <hr>
+    <h4>Top Bidders:</h4>
+    <div id="bidsList">
+      <i>No bids yet. Run the demo script!</i>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <script>
+    const socket = io('http://localhost:3000');
+    
+    socket.on('connect', () => {
+      console.log('Connected to WebSocket server with ID:', socket.id);
+    });
+
+    socket.on('auction-update', (data) => {
+      console.log('Real-time Update Received:', data);
+      
+      const container = document.getElementById('auctionData');
+      container.classList.remove('flash');
+      void container.offsetWidth; // trigger reflow
+      container.classList.add('flash');
+
+      document.getElementById('auctionTitle').innerText = data.auction.title;
+      document.getElementById('maxBid').innerText = data.auction.current_max_bid;
+
+      const bidsList = document.getElementById('bidsList');
+      bidsList.innerHTML = '';
+      
+      data.topBids.forEach(bid => {
+        const div = document.createElement('div');
+        div.className = 'bid';
+        div.innerText = `User ${bid.bidder_id.substring(0,8)}... bid $${bid.bid_amount}`;
+        bidsList.appendChild(div);
+      });
+    });
+
+    function joinAuction() {
+      const auctionIdInputValue = document.getElementById('auctionId').value;
+      if (!auctionIdInputValue) return;
+      
+      socket.emit('join-auction', auctionIdInputValue);
+      document.getElementById('auctionData').style.display = 'block';
+      document.getElementById('inputContainer').style.display = 'none';
+
+      // Perform initial HTTP fetch to populate the board immediately
+      fetch(`http://localhost:3000/api/auctions/${auctionIdInputValue}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('auctionTitle').innerText = data.auction?.title || "Auction Found";
+            document.getElementById('maxBid').innerText = data.auction?.current_max_bid || "0";
+        })
+        .catch(console.error);
+    }
+  </script>
+</body>
+</html>
