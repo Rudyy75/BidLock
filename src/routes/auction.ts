@@ -7,11 +7,11 @@ import {
   retractBid,
 } from "../modules/auction/auctionService";
 import { toHttpError } from "../utils/errors";
+import { requireAuth, AuthRequest } from "../middleware/auth";
 
 const router = Router();
 
 const placeBidBody = z.object({
-  userId: z.string().min(1),
   bidAmount: z.coerce.number().positive(),
   idempotencyKey: z.string().optional(),
 });
@@ -22,7 +22,7 @@ const retractBidBody = z.object({
 
 router.get("/auctions/:auctionId", async (req, res) => {
   try {
-    const { auctionId } = req.params;
+    const auctionId = req.params.auctionId as string;
     const data = await getAuctionSnapshot(auctionId);
     return res.status(200).json(data);
   } catch (error) {
@@ -31,14 +31,15 @@ router.get("/auctions/:auctionId", async (req, res) => {
   }
 });
 
-router.post("/auctions/:auctionId/bids", async (req, res) => {
+router.post("/auctions/:auctionId/bids", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { auctionId } = req.params;
+    const auctionId = req.params.auctionId as string;
     const payload = placeBidBody.parse(req.body);
+    const userId = req.user!.id;
 
     const result = await placeBidWithRetry({
       auctionId,
-      userId: payload.userId,
+      userId,
       bidAmount: payload.bidAmount,
       idempotencyKey: payload.idempotencyKey,
     });
@@ -50,9 +51,9 @@ router.post("/auctions/:auctionId/bids", async (req, res) => {
   }
 });
 
-router.post("/bids/:bidId/retract", async (req, res) => {
+router.post("/bids/:bidId/retract", requireAuth, async (req, res) => {
   try {
-    const { bidId } = req.params;
+    const bidId = req.params.bidId as string;
     const payload = retractBidBody.parse(req.body);
     const result = await retractBid(bidId, payload.reason);
 

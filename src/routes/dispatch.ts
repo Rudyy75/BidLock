@@ -10,11 +10,11 @@ import {
   transitionRideState,
 } from "../modules/dispatch/dispatchService";
 import { toHttpError } from "../utils/errors";
+import { requireAuth, AuthRequest } from "../middleware/auth";
 
 const router = Router();
 
 const createRideBody = z.object({
-  riderId: z.string().uuid(),
   pickupLat: z.coerce.number(),
   pickupLon: z.coerce.number(),
   dropLat: z.coerce.number(),
@@ -28,7 +28,6 @@ const claimBody = z.object({
 
 const transitionBody = z.object({
   newState: z.enum(["MATCHED", "PICKED_UP", "DROPPED_OFF", "CANCELLED"]),
-  changedBy: z.string().min(1),
 });
 
 router.get("/drivers/nearby", async (req, res) => {
@@ -52,10 +51,11 @@ router.get("/drivers/nearby", async (req, res) => {
   }
 });
 
-router.post("/rides", async (req, res) => {
+router.post("/rides", requireAuth, async (req: AuthRequest, res) => {
   try {
     const payload = createRideBody.parse(req.body);
-    const ride = await createRideRequest(payload);
+    const riderId = req.user!.id;
+    const ride = await createRideRequest({ ...payload, riderId });
     return res.status(201).json(ride);
   } catch (error) {
     const httpError = toHttpError(error);
@@ -65,7 +65,7 @@ router.post("/rides", async (req, res) => {
 
 router.get("/rides/:requestId", async (req, res) => {
   try {
-    const { requestId } = req.params;
+    const requestId = req.params.requestId as string;
     const ride = await getRideById(requestId);
     return res.status(200).json(ride);
   } catch (error) {
@@ -76,7 +76,7 @@ router.get("/rides/:requestId", async (req, res) => {
 
 router.post("/rides/:requestId/match", async (req, res) => {
   try {
-    const { requestId } = req.params;
+    const requestId = req.params.requestId as string;
     const payload = claimBody.parse(req.body);
     const result = await claimDriver(requestId, payload.workerName);
     return res.status(200).json(result);
@@ -86,11 +86,12 @@ router.post("/rides/:requestId/match", async (req, res) => {
   }
 });
 
-router.post("/rides/:requestId/state", async (req, res) => {
+router.post("/rides/:requestId/state", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { requestId } = req.params;
+    const requestId = req.params.requestId as string;
     const payload = transitionBody.parse(req.body);
-    const result = await transitionRideState(requestId, payload.newState, payload.changedBy);
+    const changedBy = req.user!.id;
+    const result = await transitionRideState(requestId, payload.newState, changedBy);
     return res.status(200).json(result);
   } catch (error) {
     const httpError = toHttpError(error);
