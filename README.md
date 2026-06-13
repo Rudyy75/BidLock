@@ -87,7 +87,10 @@ erDiagram
 - **API Layer**: Node.js v20+, TypeScript, Express.js
 - **Database**: PostgreSQL 16
 - **Spatial Expansion**: PostGIS (for fast proximity calculation)
-- **High Concurrency**: Redis & Socket.io for immediate real-time browser updates.
+- **High Concurrency**: Redis & Socket.io for immediate real-time browser updates
+- **Security & Auth**: JSON Web Tokens (JWT), Helmet.js, express-rate-limit
+- **Testing**: Jest, Supertest
+- **Worker Management**: PM2 (ecosystem.config.js)
 
 ## Technical Requirements
 - Node.js
@@ -110,6 +113,21 @@ erDiagram
    npm run dev
    ```
 6. Open your browser directly to `http://localhost:3000/` to view the Live Socket interface!
+
+## Testing & Production
+
+**Running Tests:**
+To run the automated integration test suite that verifies the JWT auth barriers and error handling, run:
+```bash
+npm test
+```
+
+**Running in Production (PM2):**
+To start the API and all background workers concurrently using PM2:
+```bash
+npx pm2 start ecosystem.config.js
+npx pm2 logs
+```
 
 ## Automated Demonstrations
 
